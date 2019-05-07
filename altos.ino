@@ -4,10 +4,14 @@
 
 /* TODO : 
 
-  - Enregistrement des grandeurs physique sur carte SD
-  - Buzzer lors de la retombé
+  - Enregistrement des grandeurs physiques sur carte SD
+  - Buzzer lors de la retombée
   
 */
+// Constantes
+const float pi = 3.14159;
+const int Servo_open = 90;
+const int Servo_closed = 180;
 
 // Capteur(s)/Actionneur(s)
 BME280 bme280; // Capteurs Temp/Pression
@@ -24,29 +28,28 @@ float vz_filtre;
 
 // Logique
 bool retomb = false;
-bool confirm = false;
 int t;
 
 // Variable filtre/derivée 
 float Te = 10e-3;
-float Sna; // Alt((n-1)Te)
-float Sn;  // Alt(nTe)
-float vzfa;
+float alta; // Alt((n-1)Te)
+float altb; // Alt(nTe)
+float vzfa; // vitesse verticale fitltrée Vz((n-1)Te))
 float f0 = 1; //Hz
-float pi = 3.14159;
 float Tau = 1/(2*pi*f0);
-
 
 // Pins
 int l[] = {2,3,4}; // Pin led RGB {r,g,b}
 int buz_p;
-int servo_pin;
+int servo_pin = 9;
 
 void setup() {
+  spara.attach(servo_pin);
+  spara.write(Servo_closed);
   pinMode(l[0], OUTPUT);
   pinMode(l[1], OUTPUT);
   pinMode(l[2], OUTPUT);
-  Serial.begin(9600);
+  //Serial.begin(9600);
   if (!bme280.init()) {
     led(l,255,0,0);
     delay(1000);
@@ -65,26 +68,37 @@ void setup() {
 
 void loop() {
   //pression = bme280.getPressure();
-  Sna = getAlt();
+  
+  // Calcul de vz
+  alta = getAlt();
   delay(Te*1000);
-  alt = getAlt();
-  Sn = alt;
-  vz = deriv(Te, Sna, Sn); 
+  altb = getAlt();
+  vz = deriv(Te, alta, altb);
+  
+  // Filtrage de vz
   vz_filtre = fpb(Tau, Te, vz, vzfa);
   vzfa = vz_filtre;
+
+  //  ^
+  //  | A implémenter dans une fonction
+  
+  /*
+  // Affichage des grandeurs
   Serial.print(alt);
   Serial.print(",");
   Serial.print(vz);
   Serial.print(",");
   Serial.print(vz_filtre);
   Serial.println();
-  /*temp = bme280.getTemperature();
+  
+  temp = bme280.getTemperature();
   Serial.println("Temp : "+String(temp)+" °C");
   pression = bme280.getPressure();
   Serial.println("Pression : "+String(pression)+" Pa");
   alt = bme280.calcAltitude(pression);
   Serial.println("Altitude : "+String(alt-alt0) + " m");
-  delay(1000);*/
+  */
+  
   //Détection de la retombé
   if(vz_filtre < 0 && !retomb) {
     t = millis();
@@ -92,26 +106,31 @@ void loop() {
   }
   
   if(retomb) {
-    float pos = 1;
-    float neg = 1;
-    while(millis() - t < 3) {
-      Sna = getAlt();
+    float pos = 1; // Incrémenté à chaque fois que vz > 0
+    float neg = 1; //        "      "      "       vz < 0
+    while(millis() - t < 3000) {
+
+      // Calcul de vz
+      alta = getAlt();
       delay(Te*1000);
-      alt = getAlt();
-      Sn = alt;
-      vz = deriv(Te, Sna, Sn); 
+      altb = getAlt();
+      vz = deriv(Te, alta, altb); 
+
+      // Filtrage de vz
       vz_filtre = fpb(Tau, Te, vz, vzfa);
       vzfa = vz_filtre;
+
+      //  ^ 
+      //  | Remplacer par la fonction lorsqu'elle sera créee
+      
       if(vz_filtre < 0) {
         neg++;
       }else{
         pos++;
       }
-    }if (neg/(neg+pos) > 0.5) {
-      confirm = true;
-    }
-    if(confirm) {
-      // DECLENCHEMENT PARACHUTE
+    }if (neg/(neg+pos) > 0.5) { // On confirme la retombée
+      // DEPLOIEMENT PARACHUTE
+      deploy_para();
     }else{
       pos = 0;
       neg = 0;
@@ -126,7 +145,7 @@ float getAlt() {
   return bme280.calcAltitude(p)-alt0;
 }
 
-float deriv(float te, float sna, float sn) { 
+float deriv(float te, float sna, float sn) { // Approximation de la dérivée numériquement
   return (sn-sna)*te;
 }
 
@@ -138,7 +157,7 @@ void deploy_para() {
    led(l, 255, 180, 0);
    delay(100);
    led(l,0,0,0);
-  //todo 
+   spara.write(Servo_open);
 }
 
 void led(int lp[], int r, int g, int b) {
