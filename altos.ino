@@ -5,7 +5,6 @@
 /* TODO : 
 
   - Enregistrement des grandeurs physiques sur carte SD
-  - Buzzer lors de la retombée
   
 */
 // Constantes
@@ -40,7 +39,7 @@ float Tau = 1/(2*pi*f0);
 
 // Pins
 int l[] = {2,3,4}; // Pin led RGB {r,g,b}
-int buz_p;
+int buz_p = 10; // Passive buzzer
 int servo_pin = 9;
 
 void setup() {
@@ -49,6 +48,7 @@ void setup() {
   pinMode(l[0], OUTPUT);
   pinMode(l[1], OUTPUT);
   pinMode(l[2], OUTPUT);
+  pinMode(buz_p, OUTPUT);
   //Serial.begin(9600);
   if (!bme280.init()) {
     led(l,255,0,0);
@@ -128,9 +128,15 @@ void loop() {
       }else{
         pos++;
       }
-    }if (neg/(neg+pos) > 0.5) { // On confirme la retombée
-      // DEPLOIEMENT PARACHUTE
-      deploy_para();
+    }if (neg/(neg+pos) > 0.5) { // Confirmation de la retombé
+      // Déploiement du parachute
+      while(1){
+        delay(100);
+        digitalWrite(buz_p, HIGH);
+        deploy_para();
+        digitalWrite(buz_p, LOW).
+      }
+      
     }else{
       pos = 0;
       neg = 0;
