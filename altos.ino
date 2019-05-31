@@ -44,7 +44,7 @@ float teTest;
 float alta; // Alt((n-1)Te)
 float altb; // Alt(nTe)
 float vzfa; // vitesse verticale fitltrée Vz((n-1)Te))
-float f0 = 1; //Hz
+float f0 = 0.5; //Hz
 float Tau = 1/(2*pi*f0);
 
 // Pins
@@ -72,6 +72,12 @@ void setup() {
 
   // INIT-MPU
   mpu.initialize();
+  mpu.setXAccelOffset(-2633);
+  mpu.setYAccelOffset(-315);
+  mpu.setZAccelOffset(707);
+  mpu.setXGyroOffset(158);
+  mpu.setYGyroOffset(26);
+  mpu.setZGyroOffset(22);
   mpu.setFullScaleAccelRange(3); //+- 16g
   mpu.setDLPFMode(2);
 
